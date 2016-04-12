@@ -196,9 +196,8 @@ out:
 	return ret;
 }
 
-void bpf_print_ops(FILE *f, struct rtattr *bpf_ops, __u16 len)
+void bpf_print_ops(FILE *f, struct rtattr *bpf_ops, __u16 len, int version)
 {
-	struct sock_filter *ops = (struct sock_filter *) RTA_DATA(bpf_ops);
 	int i;
 
 	if (len == 0)
@@ -206,12 +205,28 @@ void bpf_print_ops(FILE *f, struct rtattr *bpf_ops, __u16 len)
 
 	fprintf(f, "bytecode \'%u,", len);
 
-	for (i = 0; i < len - 1; i++)
-		fprintf(f, "%hu %hhu %hhu %u,", ops[i].code, ops[i].jt,
-			ops[i].jf, ops[i].k);
+	if (version == BPF_VERSION_EBPF) {
+		struct bpf_insn *ops = (struct bpf_insn *) RTA_DATA(bpf_ops);
 
-	fprintf(f, "%hu %hhu %hhu %u\'", ops[i].code, ops[i].jt,
-		ops[i].jf, ops[i].k);
+		for (i = 0; i < len - 1; i++)
+			fprintf(f, "%02hhx %hhx %hhx %04hx %08x,", ops[i].code,
+					ops[i].dst_reg, ops[i].src_reg,
+					ops[i].off, ops[i].imm);
+
+		fprintf(f, "%02hhx %hhx %hhx %04hx %08x\'", ops[i].code,
+				ops[i].dst_reg, ops[i].src_reg,
+				ops[i].off, ops[i].imm);
+	} else {
+		struct sock_filter *ops =
+			(struct sock_filter *) RTA_DATA(bpf_ops);
+
+		for (i = 0; i < len - 1; i++)
+			fprintf(f, "%hu %hhu %hhu %u,", ops[i].code, ops[i].jt,
+				ops[i].jf, ops[i].k);
+
+		fprintf(f, "%hu %hhu %hhu %u\'", ops[i].code, ops[i].jt,
+			ops[i].jf, ops[i].k);
+	}
 }
 
 static void bpf_map_pin_report(const struct bpf_elf_map *pin,

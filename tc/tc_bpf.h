@@ -25,7 +25,13 @@ enum {
 	BPF_NLA_OPS,
 	BPF_NLA_FD,
 	BPF_NLA_NAME,
+	BPF_NLA_EBPF,
 	__BPF_NLA_MAX,
+};
+
+enum {
+	BPF_VERSION_CBPF,
+	BPF_VERSION_EBPF,
 };
 
 #define BPF_NLA_MAX	__BPF_NLA_MAX
@@ -60,7 +66,7 @@ int bpf_parse_common(int *ptr_argc, char ***ptr_argv, const int *nla_tbl,
 		     const char **ptr_uds_name, struct nlmsghdr *n);
 int bpf_graft_map(const char *map_path, uint32_t *key, int argc, char **argv);
 
-void bpf_print_ops(FILE *f, struct rtattr *bpf_ops, __u16 len);
+void bpf_print_ops(FILE *f, struct rtattr *bpf_ops, __u16 len, int version);
 
 #ifdef HAVE_ELF
 int bpf_send_map_fds(const char *path, const char *obj);

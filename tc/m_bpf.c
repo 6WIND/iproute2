@@ -27,6 +27,7 @@ static const int nla_tbl[BPF_NLA_MAX] = {
 	[BPF_NLA_OPS]		= TCA_ACT_BPF_OPS,
 	[BPF_NLA_FD]		= TCA_ACT_BPF_FD,
 	[BPF_NLA_NAME]		= TCA_ACT_BPF_NAME,
+	[BPF_NLA_EBPF]		= TCA_ACT_BPF_EBPF,
 };
 
 static void explain(void)
@@ -178,8 +179,11 @@ static int bpf_print_opt(struct action_util *au, FILE *f, struct rtattr *arg)
 		fprintf(f, "pfd %u ", rta_getattr_u32(tb[TCA_ACT_BPF_FD]));
 
 	if (tb[TCA_ACT_BPF_OPS] && tb[TCA_ACT_BPF_OPS_LEN]) {
+		int bpf_version = (tb[TCA_ACT_BPF_EBPF] ?
+				     BPF_VERSION_EBPF : BPF_VERSION_CBPF);
 		bpf_print_ops(f, tb[TCA_ACT_BPF_OPS],
-			      rta_getattr_u16(tb[TCA_ACT_BPF_OPS_LEN]));
+			      rta_getattr_u16(tb[TCA_ACT_BPF_OPS_LEN]),
+			      bpf_version);
 		fprintf(f, " ");
 	}
 

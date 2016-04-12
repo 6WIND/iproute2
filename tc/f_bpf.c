@@ -171,16 +171,21 @@ static int bpf_print_opt(struct filter_util *qu, FILE *f,
 	else if (tb[TCA_BPF_FD])
 		fprintf(f, "pfd %u ", rta_getattr_u32(tb[TCA_BPF_FD]));
 
+	int bpf_version = BPF_VERSION_CBPF;
 	if (tb[TCA_BPF_FLAGS]) {
 		unsigned int flags = rta_getattr_u32(tb[TCA_BPF_FLAGS]);
 
 		if (flags & TCA_BPF_FLAG_ACT_DIRECT)
 			fprintf(f, "direct-action ");
+
+		if (flags & TCA_BPF_FLAG_EBPF)
+			bpf_version = BPF_VERSION_EBPF;
 	}
 
 	if (tb[TCA_BPF_OPS] && tb[TCA_BPF_OPS_LEN]) {
 		bpf_print_ops(f, tb[TCA_BPF_OPS],
-			      rta_getattr_u16(tb[TCA_BPF_OPS_LEN]));
+			      rta_getattr_u16(tb[TCA_BPF_OPS_LEN]),
+			      bpf_version);
 		fprintf(f, "\n");
 	}
 
