@@ -33,6 +33,7 @@ static void print_usage(FILE *f)
 		"                            [ [i|o]csum ]\n"
 		"                            [ ttl TTL ]\n"
 		"                            [ tos TOS ]\n"
+		"                            [ keepalive SEC RET]\n"
 		"                            [ [no]pmtudisc ]\n"
 		"                            [ [no]ignore-df ]\n"
 		"                            [ dev PHYS_DEV ]\n"
@@ -49,6 +50,8 @@ static void print_usage(FILE *f)
 		"Where: ADDR := { IP_ADDRESS | any }\n"
 		"       TOS  := { NUMBER | inherit }\n"
 		"       TTL  := { 1..255 | inherit }\n"
+		"       SEC  := { 1..2^64 | auto }\n"
+		"       RET  := { 1..255 | auto }\n"
 		"       KEY  := { DOTTED_QUAD | NUMBER }\n"
 		"       MARK := { 0x0..0xffffffff }\n"
 	);
@@ -98,6 +101,8 @@ static int gre_parse_opt(struct link_util *lu, int argc, char **argv,
 	__u8 ignore_df = 0;
 	__u32 fwmark = 0;
 	__u32 erspan_idx = 0;
+	__u8 keepalive_ret = 0;
+	__u32 keepalive_interv = 0;
 
 	if (!(n->nlmsg_flags & NLM_F_CREATE)) {
 		if (rtnl_talk(&rth, &req.n, &req.n, sizeof(req)) < 0) {
@@ -339,6 +344,24 @@ get_failed:
 				invarg("invalid erspan index\n", *argv);
 			if (erspan_idx & ~((1<<20) - 1) || erspan_idx == 0)
 				invarg("erspan index must be > 0 and <= 20-bit\n", *argv);
+		} else if (!matches(*argv, "keepalive")) {
+			__u64 interv;
+			__u32 ret;
+
+			NEXT_ARG();
+			if (strcmp(*argv, "auto") != 0) {
+				if (get_u32(&interv, *argv, 0))
+					invarg("invalid KeepAlive time interval\n", *argv);
+				keepalive_interv = interv;
+			}
+			NEXT_ARG();
+			if (strcmp(*argv, "auto") != 0) {
+				if (get_unsigned(&ret, *argv, 0))
+					invarg("invalid KeepAlive retries\n", *argv);
+				if (ret > 255)
+					invarg("KeepAlive retries must be <= 255\n", *argv);
+				keepalive_ret = ret;
+			}
 		} else
 			usage();
 		argc--; argv++;
@@ -372,6 +395,12 @@ get_failed:
 		addattr32(n, 1024, IFLA_GRE_FWMARK, fwmark);
 		if (erspan_idx != 0)
 			addattr32(n, 1024, IFLA_GRE_ERSPAN_INDEX, erspan_idx);
+		if (keepalive_interv) {
+			addattr32(n, 1024, IFLA_GRE_KEEPALIVE_INTERVAL,
+				  keepalive_interv);
+			addattr8(n, 1024, IFLA_GRE_KEEPALIVE_RETRIES,
+				 keepalive_ret);
+		}
 	} else {
 		addattr_l(n, 1024, IFLA_GRE_COLLECT_METADATA, NULL, 0);
 	}
@@ -449,6 +478,27 @@ static void gre_print_direct_opt(FILE *f, struct rtattr *tb[])
 			else
 				fprintf(f, "0x%x ", tos);
 		}
+	}
+
+	if (tb[IFLA_GRE_KEEPALIVE_INTERVAL]) {
+		unsigned long interval;
+		unsigned int retries;
+
+		interval  = rta_getattr_u64(tb[IFLA_GRE_KEEPALIVE_INTERVAL]);
+		retries  = rta_getattr_u8(tb[IFLA_GRE_KEEPALIVE_RETRIES]);
+
+		if (interval) {
+			print_int(PRINT_ANY, "keepalive",
+				  "keepalive interval %d ",
+				  interval);
+			print_int(PRINT_ANY, "keepalive",
+				  "retries %d ",
+				  retries);
+		} else {
+			print_int(PRINT_JSON, "keepalive", NULL, interval);
+		}
+	} else {
+		print_string(PRINT_FP, NULL, "keepalive %s ", "auto");
 	}
 
 	if (tb[IFLA_GRE_PMTUDISC]) {

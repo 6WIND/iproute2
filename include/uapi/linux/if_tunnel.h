@@ -5,6 +5,7 @@
 #include <linux/if.h>
 #include <linux/ip.h>
 #include <linux/in6.h>
+#include <linux/times.h>
 #include <asm/byteorder.h>
 
 
@@ -135,6 +136,8 @@ enum {
 	IFLA_GRE_IGNORE_DF,
 	IFLA_GRE_FWMARK,
 	IFLA_GRE_ERSPAN_INDEX,
+	IFLA_GRE_KEEPALIVE_INTERVAL,
+	IFLA_GRE_KEEPALIVE_RETRIES,
 	__IFLA_GRE_MAX,
 };
 
